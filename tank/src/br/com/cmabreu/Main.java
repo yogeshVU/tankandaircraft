@@ -29,7 +29,7 @@ import java.net.URL;
 import java.util.Random;
 import java.util.UUID;
 
-public class Main {
+public class Main implements IKeyReaderObserver {
 	private RTIambassador rtiamb;
 	private FederateAmbassador fedamb;  
 
@@ -89,6 +89,37 @@ public class Main {
 		log( "Joined Federation as " + federateName );
 	}
 	
+	@Override
+	public void notify( String key ) {
+		if ( key.equals("n") ) {
+			createTank();
+		}
+	}
+	
+	@Override
+	public void whenIdle() {
+		// Update only the position
+		try {
+			tankClass.updatePosition();
+			rtiamb.evokeMultipleCallbacks(0.1, 0.3);
+		} catch ( Exception e ) {
+			//
+		}
+	}	
+	
+	private void createTank() {
+		Random random = new Random();
+		double lon = -60.065429 + ( random.nextInt(5)+1 / 100 );
+		double lat = -27.74914 + ( random.nextInt(5)+1 / 100 );
+		Position p = new Position( lon,lat);
+		String id = UUID.randomUUID().toString().substring(0,5).toUpperCase();
+		try {
+			tankClass.createNew(id,id, p, TankObject.FRIEND );
+		} catch ( Exception e ) {
+			log("Error when creating a new Tank: " + e.getMessage() );
+		}
+	}
+	
 	// Run the Federate.
 	public void runFederate() throws Exception	{
 		String serial = UUID.randomUUID().toString().substring(0,5).toUpperCase();
@@ -104,32 +135,19 @@ public class Main {
 		// Publish and subscribe
 		publishAndSubscribe();
 		
-		// Create and Register 5 Units.
-		for ( int x=0; x<5; x++ ) {
-			Random random = new Random();
-			double lon = -60.065429 + ( random.nextInt(5)+1 / 100 );
-			double lat = -27.74914 + ( random.nextInt(5)+1 / 100 );
-			Position p = new Position( lon,lat);
-			String id = UUID.randomUUID().toString().substring(0,5).toUpperCase();
-			tankClass.createNew(id,id, p, TankObject.FRIEND );
-		}
-		
 		// Update all attributes for the fisrt time
 		// You can push it all immediately or use provideAttributeValueUpdate() 
 		// and requestAttributeValueUpdate().   
 		// tankClass.updateAttributeValues();
 		
-		// Wait the user to press a key to exit; 
-		System.out.println("Press a key to exit.");
-		while ( System.in.available() == 0 ) {
-			try {
-				// Update only the position
-				tankClass.updatePosition();
-				rtiamb.evokeMultipleCallbacks(0.1, 0.3);
-			} catch (Exception e) {
-				// 
-			}				
-		}
+		System.out.println("====== TANK FEDERATE ======");
+		System.out.println("Type:");
+		System.out.println("");
+		System.out.println(" n + ENTER : New tank");
+		System.out.println(" q + ENTER : Quit");
+		System.out.println("");
+		KeyReader kr = new KeyReader( this, "q" );
+		kr.readKeyUntilQuit();
 
 		// Get out!
 		exitFromFederation();

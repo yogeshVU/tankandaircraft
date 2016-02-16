@@ -27,10 +27,9 @@ import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Random;
-import java.util.Scanner;
 import java.util.UUID;
 
-public class Main {
+public class Main implements IKeyReaderObserver {
 	private RTIambassador rtiamb;
 	private FederateAmbassador fedamb;  
 
@@ -90,6 +89,37 @@ public class Main {
 		log( "Joined Federation as " + federateName );
 	}
 	
+	@Override
+	public void notify( String key ) {
+		if ( key.equals("n") ) {
+			createAircraft();
+		}
+	}
+	
+	@Override
+	public void whenIdle() {
+		// Update only the position
+		try {
+			aircraftClass.updatePosition();
+			rtiamb.evokeMultipleCallbacks(0.1, 0.3);
+		} catch ( Exception e ) {
+			//
+		}
+	}
+	
+	private void createAircraft() {
+		Random random = new Random();
+		double lon = -64.265429 + ( random.nextInt(10)+1 / 1000 );
+		double lat = -36.64914 + ( random.nextInt(10)+1 / 1000 );
+		Position p = new Position( lon,lat);
+		String id = UUID.randomUUID().toString().substring(0,5).toUpperCase();
+		try {
+			aircraftClass.createNew(id,id, p, AircraftObject.FOE );
+		} catch ( Exception e ) {
+			log("Error when creating a new Aircraft: " + e.getMessage() );
+		}
+	}
+	
 	// Run the Federate.
 	public void runFederate() throws Exception	{
 		String serial = UUID.randomUUID().toString().substring(0,5).toUpperCase();
@@ -104,43 +134,20 @@ public class Main {
 		// Publish and subscribe
 		publishAndSubscribe();
 		
-		// Create and Register 5 Units.
-		for ( int x=0; x<2; x++ ) {
-			Random random = new Random();
-			double lon = -64.265429 + ( random.nextInt(10)+1 / 1000 );
-			double lat = -36.64914 + ( random.nextInt(10)+1 / 1000 );
-			Position p = new Position( lon,lat);
-			String id = UUID.randomUUID().toString().substring(0,5).toUpperCase();
-			aircraftClass.createNew(id,id, p, AircraftObject.FOE );
-		}
-		
 		// Update all attributes for the first time
 		// You can push it all immediately or use provideAttributeValueUpdate() 
 		// and requestAttributeValueUpdate().   
 		// aircraftClass.updateAttributeValues();
 		
-		// Wait the user to press a key to exit; 
-		System.out.println("Press a key to exit.");
-		String input = "";
-		Scanner keyboard = new Scanner(System.in);
-		do {
-			input = keyboard.nextLine();
-			System.out.println("You just typed:" + input);
-		} while (! input.equals("x") );		
+		System.out.println("====== AIRCRAFT FEDERATE ======");
+		System.out.println("Type:");
+		System.out.println("");
+		System.out.println(" n + ENTER : New aircraft");
+		System.out.println(" q + ENTER : Quit");
+		System.out.println("");
+		KeyReader kr = new KeyReader( this, "q" );
+		kr.readKeyUntilQuit();
 		
-		
-		/*
-		while ( System.in.available() == 0 ) {
-			try {
-				// Update only the position
-				aircraftClass.updatePosition();
-				rtiamb.evokeMultipleCallbacks(0.1, 0.3);
-			} catch (Exception e) {
-				// 
-			}				
-		}
-		*/
-
 		// Get out!
 		exitFromFederation();
 	}
